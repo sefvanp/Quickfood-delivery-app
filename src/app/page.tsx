@@ -76,7 +76,6 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("home");
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -94,8 +93,10 @@ export default function Home() {
   useEffect(() => {
     const fetchFoods = async () => {
       try {
+        // Explicitly forcing useCdn to false for live production fetching to avoid cached empty states
         const query = `*[_type == "food"]{ _id, name, price, category, description, image }`;
-        const data = await client.fetch(query);
+        const data = await client.fetch(query, {}, { useCdn: false });
+        console.log("Fetched Foods from Sanity:", data);
         setFoodItems(data);
       } catch (err) {
         console.error("Sanity Fetch Error:", err);
@@ -173,24 +174,9 @@ export default function Home() {
               )}
             </div>
 
-            <button onClick={() => setActiveTab("home")} className="text-2xl font-bold text-orange-500 flex items-center gap-2 cursor-pointer bg-transparent border-none">
+            <div className="text-2xl font-bold text-orange-500 flex items-center gap-2">
               <Utensils className="w-6 h-6" /> QuickFood
-            </button>
-
-            <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-600">
-              <button 
-                onClick={() => setActiveTab("home")} 
-                className={`transition-colors bg-transparent border-none cursor-pointer ${activeTab === "home" ? "text-orange-500 font-bold" : "hover:text-orange-500"}`}
-              >
-                Home
-              </button>
-              <button 
-                onClick={() => setActiveTab("about")} 
-                className={`transition-colors bg-transparent border-none cursor-pointer ${activeTab === "about" ? "text-orange-500 font-bold" : "hover:text-orange-500"}`}
-              >
-                About Us
-              </button>
-            </nav>
+            </div>
 
             <div className="hidden sm:flex items-center gap-2 text-slate-600 text-sm bg-slate-100 px-3 py-1.5 rounded-full">
               <MapPin className="w-4 h-4 text-orange-500" />
@@ -303,287 +289,215 @@ export default function Home() {
           </div>
         </header>
 
-        {activeTab === "home" ? (
-          <>
-            {/* Hero Section */}
-            <section className="max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="space-y-6 max-w-lg">
-                <h2 className="text-5xl font-extrabold tracking-tight text-slate-900">
-                  Delicious Food Delivered To Your Doorstep
-                </h2>
-                <p className="text-lg text-slate-600">
-                  Order your favorite meals from top local restaurants with fast & fresh delivery.
-                </p>
-                <div className="flex gap-4">
-                  <Link href="#menu-section">
-                    <Button size="lg" className="bg-orange-500 hover:bg-orange-600">
-                      Order Now
-                    </Button>
-                  </Link>
-                  <Button size="lg" variant="outline" onClick={() => setActiveTab("about")}>
-                    About Us
-                  </Button>
-                </div>
-              </div>
-
-              <div className="relative w-full max-w-md h-72 rounded-2xl overflow-hidden shadow-lg">
-                <img
-                  src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80"
-                  alt="Hero Food"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </section>
-
-            {/* Offers Section */}
-            <section className="max-w-6xl mx-auto px-6 py-6">
-              <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 rounded-2xl shadow-md text-white">
-                <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                  <Flame className="w-6 h-6 animate-pulse" /> Today's Hot Offers 🔥
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
-                    <Percent className="w-8 h-8 text-yellow-200" />
-                    <div>
-                      <h4 className="font-bold text-lg">50% OFF</h4>
-                      <p className="text-xs text-orange-100">On your first burger order!</p>
-                    </div>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
-                    <ShoppingBag className="w-8 h-8 text-yellow-200" />
-                    <div>
-                      <h4 className="font-bold text-lg">Buy 1 Get 1</h4>
-                      <p className="text-xs text-orange-100">Applicable on all Large Pizzas</p>
-                    </div>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
-                    <Truck className="w-8 h-8 text-yellow-200" />
-                    <div>
-                      <h4 className="font-bold text-lg">Free Delivery</h4>
-                      <p className="text-xs text-orange-100">Use code: QUICKFREE</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section id="menu-section" className="max-w-6xl mx-auto px-6 pt-6">
-              <Input
-                type="text"
-                placeholder="Search for burgers, pizza, drinks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-md bg-white border-slate-200"
-              />
-            </section>
-
-            <section className="max-w-6xl mx-auto px-6 py-6">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-800 mb-4">Categories</h3>
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.name)}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all ${
-                        selectedCategory === cat.name
-                          ? "bg-orange-500 text-white shadow-md"
-                          : "bg-slate-50 border border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-500"
-                      }`}
-                    >
-                      <span>{cat.icon}</span>
-                      <span>{cat.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="max-w-6xl mx-auto px-6 py-2">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-800 mb-6">Popular Dishes</h3>
-                {filteredFoodItems.length === 0 ? (
-                  <p className="text-slate-500">No dishes found. Add items from Sanity Studio.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredFoodItems.map((item: FoodItem) => (
-                      <div
-                        key={item._id}
-                        className="bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
-                      >
-                        <div className="relative overflow-hidden" onClick={() => setSelectedFood(item)}>
-                          <img
-                            src={item.image ? urlFor(item.image).url() : ""}
-                            alt={item.name}
-                            className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="bg-white/90 text-slate-900 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
-                              <Eye className="w-3.5 h-3.5" /> Quick View
-                            </span>
-                          </div>
-                        </div>
-                        <div className="p-4 space-y-3">
-                          <span className="text-xs font-semibold px-2 py-1 bg-orange-100 text-orange-600 rounded-full">
-                            {item.category}
-                          </span>
-                          <h4
-                            className="font-bold text-slate-800 text-lg leading-snug hover:text-orange-500 transition-colors"
-                            onClick={() => setSelectedFood(item)}
-                          >
-                            {item.name}
-                          </h4>
-                          <div className="flex items-center justify-between pt-2">
-                            <span className="text-xl font-bold text-slate-900">${item.price}</span>
-                            <Button
-                              size="sm"
-                              className="bg-orange-500 hover:bg-orange-600"
-                              onClick={() => handleAddToCart(item)}
-                            >
-                              Add to Cart
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="max-w-6xl mx-auto px-6 py-8">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-800 mb-6">What Our Customers Say</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200/60 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={review.avatar}
-                          alt={review.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                        <div>
-                          <h5 className="font-semibold text-slate-800 text-sm">{review.name}</h5>
-                          <div className="flex items-center gap-1 text-yellow-500">
-                            {[...Array(review.rating)].map((_, i) => (
-                              <Star key={i} className="w-3.5 h-3.5 fill-yellow-400" />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-slate-600 text-sm italic">"{review.comment}"</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <Dialog open={!!selectedFood} onOpenChange={(open) => !open && setSelectedFood(null)}>
-              {selectedFood && (
-                <DialogContent className="sm:max-w-lg">
-                  <div className="space-y-4">
-                    <img
-                      src={selectedFood.image ? urlFor(selectedFood.image).url() : ""}
-                      alt={selectedFood.name}
-                      className="w-full h-56 object-cover rounded-xl"
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full">
-                        {selectedFood.category}
-                      </span>
-                      <span className="text-2xl font-bold text-slate-900">${selectedFood.price}</span>
-                    </div>
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-bold text-slate-800">
-                        {selectedFood.name}
-                      </DialogTitle>
-                      <DialogDescription className="text-slate-600 pt-2 text-sm leading-relaxed">
-                        {selectedFood.description}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="pt-4">
-                      <Button
-                        className="w-full bg-orange-500 hover:bg-orange-600"
-                        onClick={() => {
-                          handleAddToCart(selectedFood);
-                          setSelectedFood(null);
-                        }}
-                      >
-                        Add to Cart
-                      </Button>
-                    </DialogFooter>
-                  </div>
-                </DialogContent>
-              )}
-            </Dialog>
-          </>
-        ) : (
-          /* About Us Tab Section */
-          <section className="max-w-6xl mx-auto px-6 py-12 space-y-12 animate-fadeIn">
-            <div className="text-center max-w-2xl mx-auto space-y-4">
-              <span className="text-xs font-bold px-3 py-1 bg-orange-100 text-orange-600 rounded-full uppercase tracking-wider">
-                About QuickFood
-              </span>
-              <h2 className="text-4xl font-extrabold text-slate-900">
-                Serving Happiness & Hot Meals Right To Your Door
-              </h2>
-              <p className="text-slate-600 text-base leading-relaxed">
-                Founded with a passion for good food and swift delivery, QuickFood connects you with the finest culinary experiences from top local restaurants and kitchens.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
-                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <h4 className="font-bold text-lg text-slate-800">Lightning Fast</h4>
-                <p className="text-sm text-slate-600">Average delivery under 30 minutes to keep your food piping hot.</p>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
-                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
-                  <Award className="w-6 h-6" />
-                </div>
-                <h4 className="font-bold text-lg text-slate-800">Best Quality</h4>
-                <p className="text-sm text-slate-600">Partnered with top-rated local spots ensuring pristine ingredients.</p>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
-                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
-                  <Heart className="w-6 h-6" />
-                </div>
-                <h4 className="font-bold text-lg text-slate-800">Made with Love</h4>
-                <p className="text-sm text-slate-600">Every single order is packed with care and utmost hygiene safety.</p>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
-                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
-                  <Users className="w-6 h-6" />
-                </div>
-                <h4 className="font-bold text-lg text-slate-800">Happy Foodies</h4>
-                <p className="text-sm text-slate-600">Thousands of satisfied customers enjoying daily treats across Kerala.</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-8">
-              <div className="space-y-4 flex-1">
-                <h3 className="text-2xl font-bold text-slate-900">Our Mission</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  We believe that ordering food online should be seamless, quick, and delightful. Whether you are craving a late-night cheesy pizza, a juicy burger, or a rich traditional biryani, QuickFood is built to bring your favorite dishes to you without hassle.
-                </p>
-                <Button className="bg-orange-500 hover:bg-orange-600" onClick={() => setActiveTab("home")}>
-                  Explore Menu
+        {/* Hero Section */}
+        <section className="max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="space-y-6 max-w-lg">
+            <h2 className="text-5xl font-extrabold tracking-tight text-slate-900">
+              Delicious Food Delivered To Your Doorstep
+            </h2>
+            <p className="text-lg text-slate-600">
+              Order your favorite meals from top local restaurants with fast & fresh delivery.
+            </p>
+            <div className="flex gap-4">
+              <Link href="#menu-section">
+                <Button size="lg" className="bg-orange-500 hover:bg-orange-600">
+                  Order Now
                 </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="relative w-full max-w-md h-72 rounded-2xl overflow-hidden shadow-lg">
+            <img
+              src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80"
+              alt="Hero Food"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </section>
+
+        {/* Offers Section */}
+        <section className="max-w-6xl mx-auto px-6 py-6">
+          <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 rounded-2xl shadow-md text-white">
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <Flame className="w-6 h-6 animate-pulse" /> Today's Hot Offers 🔥
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
+                <Percent className="w-8 h-8 text-yellow-200" />
+                <div>
+                  <h4 className="font-bold text-lg">50% OFF</h4>
+                  <p className="text-xs text-orange-100">On your first burger order!</p>
+                </div>
               </div>
-              <div className="w-full md:w-80 h-56 rounded-xl overflow-hidden shadow-md flex-shrink-0">
-                <img
-                  src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80"
-                  alt="Restaurant kitchen"
-                  className="w-full h-full object-cover"
-                />
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
+                <ShoppingBag className="w-8 h-8 text-yellow-200" />
+                <div>
+                  <h4 className="font-bold text-lg">Buy 1 Get 1</h4>
+                  <p className="text-xs text-orange-100">Applicable on all Large Pizzas</p>
+                </div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
+                <Truck className="w-8 h-8 text-yellow-200" />
+                <div>
+                  <h4 className="font-bold text-lg">Free Delivery</h4>
+                  <p className="text-xs text-orange-100">Use code: QUICKFREE</p>
+                </div>
               </div>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
+
+        <section id="menu-section" className="max-w-6xl mx-auto px-6 pt-6">
+          <Input
+            type="text"
+            placeholder="Search for burgers, pizza, drinks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md bg-white border-slate-200"
+          />
+        </section>
+
+        <section className="max-w-6xl mx-auto px-6 py-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="text-2xl font-bold text-slate-800 mb-4">Categories</h3>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.name)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all ${
+                    selectedCategory === cat.name
+                      ? "bg-orange-500 text-white shadow-md"
+                      : "bg-slate-50 border border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-500"
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="max-w-6xl mx-auto px-6 py-2">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="text-2xl font-bold text-slate-800 mb-6">Popular Dishes</h3>
+            {filteredFoodItems.length === 0 ? (
+              <p className="text-slate-500">No dishes found. Add items from Sanity Studio.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredFoodItems.map((item: FoodItem) => (
+                  <div
+                    key={item._id}
+                    className="bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+                  >
+                    <div className="relative overflow-hidden" onClick={() => setSelectedFood(item)}>
+                      <img
+                        src={item.image ? urlFor(item.image).url() : ""}
+                        alt={item.name}
+                        className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="bg-white/90 text-slate-900 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+                          <Eye className="w-3.5 h-3.5" /> Quick View
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <span className="text-xs font-semibold px-2 py-1 bg-orange-100 text-orange-600 rounded-full">
+                        {item.category}
+                      </span>
+                      <h4
+                        className="font-bold text-slate-800 text-lg leading-snug hover:text-orange-500 transition-colors"
+                        onClick={() => setSelectedFood(item)}
+                      >
+                        {item.name}
+                      </h4>
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-xl font-bold text-slate-900">${item.price}</span>
+                        <Button
+                          size="sm"
+                          className="bg-orange-500 hover:bg-orange-600"
+                          onClick={() => handleAddToCart(item)}
+                        >
+                          Add to Cart
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="max-w-6xl mx-auto px-6 py-8">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="text-2xl font-bold text-slate-800 mb-6">What Our Customers Say</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200/60 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={review.avatar}
+                      alt={review.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div>
+                      <h5 className="font-semibold text-slate-800 text-sm">{review.name}</h5>
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        {[...Array(review.rating)].map((_, i) => (
+                          <Star key={i} className="w-3.5 h-3.5 fill-yellow-400" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-slate-600 text-sm italic">"{review.comment}"</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <Dialog open={!!selectedFood} onOpenChange={(open) => !open && setSelectedFood(null)}>
+          {selectedFood && (
+            <DialogContent className="sm:max-w-lg">
+              <div className="space-y-4">
+                <img
+                  src={selectedFood.image ? urlFor(selectedFood.image).url() : ""}
+                  alt={selectedFood.name}
+                  className="w-full h-56 object-cover rounded-xl"
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full">
+                    {selectedFood.category}
+                  </span>
+                  <span className="text-2xl font-bold text-slate-900">${selectedFood.price}</span>
+                </div>
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold text-slate-800">
+                    {selectedFood.name}
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-600 pt-2 text-sm leading-relaxed">
+                    {selectedFood.description}
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="pt-4">
+                  <Button
+                    className="w-full bg-orange-500 hover:bg-orange-600"
+                    onClick={() => {
+                      handleAddToCart(selectedFood);
+                      setSelectedFood(null);
+                    }}
+                  >
+                    Add to Cart
+                  </Button>
+                </DialogFooter>
+              </div>
+            </DialogContent>
+          )}
+        </Dialog>
       </main>
 
       <footer className="bg-slate-900 text-slate-300 pt-12 pb-8">
@@ -600,20 +514,19 @@ export default function Home() {
           <div>
             <h4 className="text-lg font-semibold text-white mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li><button onClick={() => setActiveTab("home")} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Home</button></li>
-              <li><button onClick={() => setActiveTab("about")} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">About Us</button></li>
-              <li><button onClick={() => { setActiveTab("home"); window.scrollTo({ top: 600, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Menu</button></li>
-              <li><button onClick={() => { setActiveTab("home"); window.scrollTo({ top: 300, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Offers</button></li>
+              <li><button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Home</button></li>
+              <li><button onClick={() => window.scrollTo({ top: 600, behavior: 'smooth' })} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Menu</button></li>
+              <li><button onClick={() => window.scrollTo({ top: 300, behavior: 'smooth' })} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Offers</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-lg font-semibold text-white mb-4">Categories</h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Burger"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Burgers</button></li>
-              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Pizza"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Pizzas</button></li>
-              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Biryani"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Biryani</button></li>
-              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Drinks"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Beverages</button></li>
+              <li><button onClick={() => { setSelectedCategory("Burger"); window.scrollTo({ top: 600, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Burgers</button></li>
+              <li><button onClick={() => { setSelectedCategory("Pizza"); window.scrollTo({ top: 600, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Pizzas</button></li>
+              <li><button onClick={() => { setSelectedCategory("Biryani"); window.scrollTo({ top: 600, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Biryani</button></li>
+              <li><button onClick={() => { setSelectedCategory("Drinks"); window.scrollTo({ top: 600, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Beverages</button></li>
             </ul>
           </div>
 
