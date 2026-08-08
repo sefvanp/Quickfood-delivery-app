@@ -1,65 +1,636 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { toast } from "sonner";
+import { MapPin, Utensils, Eye, Star, ShoppingBag, Flame, Percent, Truck, Users, Heart, Award, Clock } from "lucide-react";
+import { useCartStore } from "../store/useCartStore";
+import { client } from "../sanity/lib/client";
+import { urlFor } from "../sanity/lib/image";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../components/ui/dialog";
+
+interface FoodItem {
+  _id: string;
+  name: string;
+  price: number;
+  category: string;
+  description?: string;
+  image?: any;
+}
+
+const categories = [
+  { id: 1, name: "All", icon: "🍽️" },
+  { id: 2, name: "Burger", icon: "🍔" },
+  { id: 3, name: "Pizza", icon: "🍕" },
+  { id: 4, name: "Biryani", icon: "🍲" },
+  { id: 5, name: "Drinks", icon: "🥤" },
+];
+
+const reviews = [
+  {
+    id: 1,
+    name: "Rahul Sharma",
+    rating: 5,
+    comment: "The Chicken Biryani was absolutely amazing! Fresh, hot, and delivered on time.",
+    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80",
+  },
+  {
+    id: 2,
+    name: "Ananya Roy",
+    rating: 5,
+    comment: "Best Pepperoni Pizza in town. Super cheesy and crispy crust. Loved it!",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
+  },
+  {
+    id: 3,
+    name: "Mohammed Faizal",
+    rating: 4,
+    comment: "Quick delivery and great packaging. The cold coffee was refreshing.",
+    avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&q=80",
+  },
+];
 
 export default function Home() {
+  const { user, isSignedIn } = useUser();
+  const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = useCartStore();
+
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("home");
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("success") === "true") {
+      toast.success("Order placed successfully! Thank you for ordering.");
+      clearCart();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (query.get("canceled") === "true") {
+      toast.error("Order payment was canceled.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [clearCart]);
+
+  useEffect(() => {
+    const fetchFoods = async () => {
+      try {
+        const query = `*[_type == "food"]{ _id, name, price, category, description, image }`;
+        const data = await client.fetch(query);
+        setFoodItems(data);
+      } catch (err) {
+        console.error("Sanity Fetch Error:", err);
+      }
+    };
+
+    fetchFoods();
+  }, []);
+
+  const handleCheckout = async () => {
+    if (!isSignedIn) {
+      toast.error("Please sign in to complete your order");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: cart,
+          userEmail: user?.primaryEmailAddress?.emailAddress,
+          userName: user?.fullName || "Customer",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Checkout failed! Please try again.");
+      }
+    } catch (err) {
+      toast.error("Something went wrong!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToCart = (item: FoodItem) => {
+    addToCart(item);
+    toast.success(`${item.name} added to cart!`);
+  };
+
+  const filteredFoodItems = foodItems.filter((item: FoodItem) => {
+    const matchesCategory =
+      selectedCategory === "All" || item.category?.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch = item.name
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const totalItemsCount = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  const totalPrice = cart.reduce(
+    (sum: number, item: any) => sum + item.price * item.quantity,
+    0
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
+      <main className="pb-16">
+        <header className="flex items-center justify-between px-8 py-4 bg-white shadow-sm sticky top-0 z-10">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              {isSignedIn ? (
+                <UserButton />
+              ) : (
+                <SignInButton mode="modal">
+                  <Button variant="outline" size="sm">Sign In</Button>
+                </SignInButton>
+              )}
+            </div>
+
+            <button onClick={() => setActiveTab("home")} className="text-2xl font-bold text-orange-500 flex items-center gap-2 cursor-pointer bg-transparent border-none">
+              <Utensils className="w-6 h-6" /> QuickFood
+            </button>
+
+            <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-600">
+              <button 
+                onClick={() => setActiveTab("home")} 
+                className={`transition-colors bg-transparent border-none cursor-pointer ${activeTab === "home" ? "text-orange-500 font-bold" : "hover:text-orange-500"}`}
+              >
+                Home
+              </button>
+              <button 
+                onClick={() => setActiveTab("about")} 
+                className={`transition-colors bg-transparent border-none cursor-pointer ${activeTab === "about" ? "text-orange-500 font-bold" : "hover:text-orange-500"}`}
+              >
+                About Us
+              </button>
+            </nav>
+
+            <div className="hidden sm:flex items-center gap-2 text-slate-600 text-sm bg-slate-100 px-3 py-1.5 rounded-full">
+              <MapPin className="w-4 h-4 text-orange-500" />
+              <span className="font-medium">Deliver to:</span>
+              <select className="bg-transparent border-none font-semibold text-slate-800 cursor-pointer focus:outline-none">
+                <option>Wayanad, Kerala</option>
+                <option>Kochi, Kerala</option>
+                <option>Kozhikode, Kerala</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-x-3 flex items-center">
+            {isSignedIn && (
+              <Link href="/orders">
+                <Button variant="outline" className="flex items-center gap-2 border-slate-200">
+                  <ShoppingBag className="w-4 h-4 text-orange-500" /> My Orders
+                </Button>
+              </Link>
+            )}
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button className="bg-orange-500 hover:bg-orange-600">
+                  Cart ({totalItemsCount})
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-md flex flex-col justify-between">
+                <div>
+                  <SheetHeader>
+                    <SheetTitle className="text-xl font-bold">Your Order Cart</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    {cart.length === 0 ? (
+                      <p className="text-slate-500 text-center py-8">Your cart is empty.</p>
+                    ) : (
+                      cart.map((item: any) => (
+                        <div
+                          key={item._id}
+                          className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm"
+                        >
+                          {item.image && (
+                            <img
+                              src={urlFor(item.image).url()}
+                              alt={item.name}
+                              className="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-slate-800 text-sm truncate">{item.name}</h4>
+                            <p className="text-xs font-medium text-orange-600 mt-0.5">
+                              ${item.price} × {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 rounded-none hover:bg-slate-100 text-slate-600 font-bold"
+                                  onClick={() => updateQuantity(item._id, -1)}
+                                >
+                                  -
+                                </Button>
+                                <span className="px-2 text-xs font-semibold text-slate-800">{item.quantity}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 rounded-none hover:bg-slate-100 text-slate-600 font-bold"
+                                  onClick={() => updateQuantity(item._id, 1)}
+                                >
+                                  +
+                                </Button>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-slate-400 hover:text-red-500 h-6 w-6 p-0 hover:bg-red-50 rounded-md ml-auto"
+                                onClick={() => {
+                                  removeFromCart(item._id);
+                                  toast.error("Item removed");
+                                }}
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {cart.length > 0 && (
+                  <div className="border-t pt-4 space-y-4">
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total Amount:</span>
+                      <span>${totalPrice.toFixed(2)}</span>
+                    </div>
+                    <Button
+                      className="w-full bg-orange-500 hover:bg-orange-600"
+                      onClick={handleCheckout}
+                      disabled={loading}
+                    >
+                      {loading ? "Processing..." : "Pay with Stripe"}
+                    </Button>
+                  </div>
+                )}
+              </SheetContent>
+            </Sheet>
+          </div>
+        </header>
+
+        {activeTab === "home" ? (
+          <>
+            {/* Hero Section */}
+            <section className="max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="space-y-6 max-w-lg">
+                <h2 className="text-5xl font-extrabold tracking-tight text-slate-900">
+                  Delicious Food Delivered To Your Doorstep
+                </h2>
+                <p className="text-lg text-slate-600">
+                  Order your favorite meals from top local restaurants with fast & fresh delivery.
+                </p>
+                <div className="flex gap-4">
+                  <Link href="#menu-section">
+                    <Button size="lg" className="bg-orange-500 hover:bg-orange-600">
+                      Order Now
+                    </Button>
+                  </Link>
+                  <Button size="lg" variant="outline" onClick={() => setActiveTab("about")}>
+                    About Us
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative w-full max-w-md h-72 rounded-2xl overflow-hidden shadow-lg">
+                <img
+                  src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80"
+                  alt="Hero Food"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </section>
+
+            {/* Offers Section */}
+            <section className="max-w-6xl mx-auto px-6 py-6">
+              <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 rounded-2xl shadow-md text-white">
+                <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Flame className="w-6 h-6 animate-pulse" /> Today's Hot Offers 🔥
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
+                    <Percent className="w-8 h-8 text-yellow-200" />
+                    <div>
+                      <h4 className="font-bold text-lg">50% OFF</h4>
+                      <p className="text-xs text-orange-100">On your first burger order!</p>
+                    </div>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
+                    <ShoppingBag className="w-8 h-8 text-yellow-200" />
+                    <div>
+                      <h4 className="font-bold text-lg">Buy 1 Get 1</h4>
+                      <p className="text-xs text-orange-100">Applicable on all Large Pizzas</p>
+                    </div>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
+                    <Truck className="w-8 h-8 text-yellow-200" />
+                    <div>
+                      <h4 className="font-bold text-lg">Free Delivery</h4>
+                      <p className="text-xs text-orange-100">Use code: QUICKFREE</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section id="menu-section" className="max-w-6xl mx-auto px-6 pt-6">
+              <Input
+                type="text"
+                placeholder="Search for burgers, pizza, drinks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="max-w-md bg-white border-slate-200"
+              />
+            </section>
+
+            <section className="max-w-6xl mx-auto px-6 py-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-800 mb-4">Categories</h3>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.name)}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all ${
+                        selectedCategory === cat.name
+                          ? "bg-orange-500 text-white shadow-md"
+                          : "bg-slate-50 border border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-500"
+                      }`}
+                    >
+                      <span>{cat.icon}</span>
+                      <span>{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="max-w-6xl mx-auto px-6 py-2">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-800 mb-6">Popular Dishes</h3>
+                {filteredFoodItems.length === 0 ? (
+                  <p className="text-slate-500">No dishes found. Add items from Sanity Studio.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredFoodItems.map((item: FoodItem) => (
+                      <div
+                        key={item._id}
+                        className="bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+                      >
+                        <div className="relative overflow-hidden" onClick={() => setSelectedFood(item)}>
+                          <img
+                            src={item.image ? urlFor(item.image).url() : ""}
+                            alt={item.name}
+                            className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="bg-white/90 text-slate-900 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+                              <Eye className="w-3.5 h-3.5" /> Quick View
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <span className="text-xs font-semibold px-2 py-1 bg-orange-100 text-orange-600 rounded-full">
+                            {item.category}
+                          </span>
+                          <h4
+                            className="font-bold text-slate-800 text-lg leading-snug hover:text-orange-500 transition-colors"
+                            onClick={() => setSelectedFood(item)}
+                          >
+                            {item.name}
+                          </h4>
+                          <div className="flex items-center justify-between pt-2">
+                            <span className="text-xl font-bold text-slate-900">${item.price}</span>
+                            <Button
+                              size="sm"
+                              className="bg-orange-500 hover:bg-orange-600"
+                              onClick={() => handleAddToCart(item)}
+                            >
+                              Add to Cart
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="max-w-6xl mx-auto px-6 py-8">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-800 mb-6">What Our Customers Say</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200/60 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={review.avatar}
+                          alt={review.name}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div>
+                          <h5 className="font-semibold text-slate-800 text-sm">{review.name}</h5>
+                          <div className="flex items-center gap-1 text-yellow-500">
+                            {[...Array(review.rating)].map((_, i) => (
+                              <Star key={i} className="w-3.5 h-3.5 fill-yellow-400" />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-slate-600 text-sm italic">"{review.comment}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <Dialog open={!!selectedFood} onOpenChange={(open) => !open && setSelectedFood(null)}>
+              {selectedFood && (
+                <DialogContent className="sm:max-w-lg">
+                  <div className="space-y-4">
+                    <img
+                      src={selectedFood.image ? urlFor(selectedFood.image).url() : ""}
+                      alt={selectedFood.name}
+                      className="w-full h-56 object-cover rounded-xl"
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full">
+                        {selectedFood.category}
+                      </span>
+                      <span className="text-2xl font-bold text-slate-900">${selectedFood.price}</span>
+                    </div>
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-bold text-slate-800">
+                        {selectedFood.name}
+                      </DialogTitle>
+                      <DialogDescription className="text-slate-600 pt-2 text-sm leading-relaxed">
+                        {selectedFood.description}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="pt-4">
+                      <Button
+                        className="w-full bg-orange-500 hover:bg-orange-600"
+                        onClick={() => {
+                          handleAddToCart(selectedFood);
+                          setSelectedFood(null);
+                        }}
+                      >
+                        Add to Cart
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                </DialogContent>
+              )}
+            </Dialog>
+          </>
+        ) : (
+          /* About Us Tab Section */
+          <section className="max-w-6xl mx-auto px-6 py-12 space-y-12 animate-fadeIn">
+            <div className="text-center max-w-2xl mx-auto space-y-4">
+              <span className="text-xs font-bold px-3 py-1 bg-orange-100 text-orange-600 rounded-full uppercase tracking-wider">
+                About QuickFood
+              </span>
+              <h2 className="text-4xl font-extrabold text-slate-900">
+                Serving Happiness & Hot Meals Right To Your Door
+              </h2>
+              <p className="text-slate-600 text-base leading-relaxed">
+                Founded with a passion for good food and swift delivery, QuickFood connects you with the finest culinary experiences from top local restaurants and kitchens.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
+                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-lg text-slate-800">Lightning Fast</h4>
+                <p className="text-sm text-slate-600">Average delivery under 30 minutes to keep your food piping hot.</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
+                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
+                  <Award className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-lg text-slate-800">Best Quality</h4>
+                <p className="text-sm text-slate-600">Partnered with top-rated local spots ensuring pristine ingredients.</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
+                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
+                  <Heart className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-lg text-slate-800">Made with Love</h4>
+                <p className="text-sm text-slate-600">Every single order is packed with care and utmost hygiene safety.</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center space-y-3">
+                <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-lg text-slate-800">Happy Foodies</h4>
+                <p className="text-sm text-slate-600">Thousands of satisfied customers enjoying daily treats across Kerala.</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-8">
+              <div className="space-y-4 flex-1">
+                <h3 className="text-2xl font-bold text-slate-900">Our Mission</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  We believe that ordering food online should be seamless, quick, and delightful. Whether you are craving a late-night cheesy pizza, a juicy burger, or a rich traditional biryani, QuickFood is built to bring your favorite dishes to you without hassle.
+                </p>
+                <Button className="bg-orange-500 hover:bg-orange-600" onClick={() => setActiveTab("home")}>
+                  Explore Menu
+                </Button>
+              </div>
+              <div className="w-full md:w-80 h-56 rounded-xl overflow-hidden shadow-md flex-shrink-0">
+                <img
+                  src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80"
+                  alt="Restaurant kitchen"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </section>
+        )}
       </main>
+
+      <footer className="bg-slate-900 text-slate-300 pt-12 pb-8">
+        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-4">
+            <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Utensils className="w-6 h-6 text-orange-500" /> QuickFood
+            </h3>
+            <p className="text-sm text-slate-400">
+              Fresh and delicious food delivered straight to your home with speed & love.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-4">Quick Links</h4>
+            <ul className="space-y-2 text-sm text-slate-400">
+              <li><button onClick={() => setActiveTab("home")} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Home</button></li>
+              <li><button onClick={() => setActiveTab("about")} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">About Us</button></li>
+              <li><button onClick={() => { setActiveTab("home"); window.scrollTo({ top: 600, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Menu</button></li>
+              <li><button onClick={() => { setActiveTab("home"); window.scrollTo({ top: 300, behavior: 'smooth' }); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Offers</button></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-4">Categories</h4>
+            <ul className="space-y-2 text-sm text-slate-400">
+              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Burger"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Burgers</button></li>
+              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Pizza"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Pizzas</button></li>
+              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Biryani"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Biryani</button></li>
+              <li><button onClick={() => { setActiveTab("home"); setSelectedCategory("Drinks"); }} className="hover:text-orange-500 transition-colors bg-transparent border-none cursor-pointer p-0">Beverages</button></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-4">Follow Us</h4>
+            <div className="flex gap-3 text-sm text-slate-400">
+              <a href="https://www.facebook.com/valorant.yt.9/" className="hover:text-orange-500 transition-colors bg-slate-800 px-3 py-1 rounded-full">Facebook</a>
+              <a href="https://www.instagram.com/__sfvn____/" className="hover:text-orange-500 transition-colors bg-slate-800 px-3 py-1 rounded-full">Instagram</a>
+              <a href="https://x.com/mr_sefvan_pp" className="hover:text-orange-500 transition-colors bg-slate-800 px-3 py-1 rounded-full">Twitter</a>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-6 border-t border-slate-800 mt-8 pt-6 text-center text-sm text-slate-500">
+          © {new Date().getFullYear()} QuickFood. All rights reserved.
+        </div>
+      </footer>
     </div>
   );
 }
