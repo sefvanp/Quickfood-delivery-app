@@ -93,7 +93,6 @@ export default function Home() {
   useEffect(() => {
     const fetchFoods = async () => {
       try {
-        // Explicitly forcing useCdn to false for live production fetching to avoid cached empty states
         const query = `*[_type == "food"]{ _id, name, price, category, description, image }`;
         const data = await client.fetch(query, {}, { useCdn: false });
         console.log("Fetched Foods from Sanity:", data);
@@ -228,7 +227,7 @@ export default function Home() {
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-slate-800 text-sm truncate">{item.name}</h4>
                             <p className="text-xs font-medium text-orange-600 mt-0.5">
-                              ${item.price} × {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
+                              ₹{item.price} × {item.quantity} = ₹{(item.price * item.quantity).toFixed(2)}
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                               <div className="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden">
@@ -273,7 +272,7 @@ export default function Home() {
                   <div className="border-t pt-4 space-y-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total Amount:</span>
-                      <span>${totalPrice.toFixed(2)}</span>
+                      <span>₹{totalPrice.toFixed(2)}</span>
                     </div>
                     <Button
                       className="w-full bg-orange-500 hover:bg-orange-600"
@@ -415,7 +414,7 @@ export default function Home() {
                         {item.name}
                       </h4>
                       <div className="flex items-center justify-between pt-2">
-                        <span className="text-xl font-bold text-slate-900">${item.price}</span>
+                        <span className="text-xl font-bold text-slate-900">₹{item.price}</span>
                         <Button
                           size="sm"
                           className="bg-orange-500 hover:bg-orange-600"
@@ -473,7 +472,7 @@ export default function Home() {
                   <span className="text-xs font-semibold px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full">
                     {selectedFood.category}
                   </span>
-                  <span className="text-2xl font-bold text-slate-900">${selectedFood.price}</span>
+                  <span className="text-2xl font-bold text-slate-900">₹{selectedFood.price}</span>
                 </div>
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-bold text-slate-800">
