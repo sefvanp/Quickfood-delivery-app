@@ -1,19 +1,21 @@
 # QuickFood 🍔🚀
 
-QuickFood is a modern, full-stack food ordering web application built with Next.js, Sanity CMS, Clerk Authentication, and Stripe Payments. Designed to provide users with a seamless food delivery experience.
+QuickFood is a modern, full-stack food ordering web application built with Next.js, Sanity CMS, Clerk Authentication, Stripe Payments, Shadcn UI, and Zustand. Designed to provide users with a seamless and responsive food delivery experience.
 
 ## ✨ Features
 
 - **Dynamic Food Catalog:** Managed seamlessly using Sanity CMS for easy additions, updates, and publishing.
 - **Secure Authentication:** User authentication powered by Clerk.
-- **Cart Management:** Interactive cart system to add, modify, and review food items.
+- **State Management:** Efficient cart and global state management handled using Zustand.
+- **Cart Management:** Interactive cart system to add, modify, and review food items seamlessly.
 - **Online Payments:** Integrated payment gateway using Stripe.
-- **Responsive UI:** Built with Tailwind CSS for a sleek, modern, and mobile-friendly design.
+- **Modern UI Components:** Styled beautifully using Tailwind CSS and accessible components from Shadcn UI.
 
 ## 🛠️ Tech Stack
 
 - **Frontend & Backend:** Next.js (App Router), React, TypeScript
-- **Styling:** Tailwind CSS, Lucide Icons
+- **UI & Styling:** Tailwind CSS, Shadcn UI, Lucide Icons
+- **State Management:** Zustand
 - **CMS:** Sanity CMS
 - **Authentication:** Clerk
 - **Payments:** Stripe
