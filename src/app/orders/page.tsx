@@ -6,6 +6,7 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { Utensils, ShoppingBag, Clock, CheckCircle2, Package, Bike, Phone, ArrowLeft, Timer, Sparkles, Star } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../../components/ui/button";
+import { toast } from "sonner";
 
 interface Order {
   _id: string;
@@ -119,6 +120,7 @@ export default function OrdersPage() {
   const handleRate = (orderId: string, stars: number) => {
     setRatings((prev) => ({ ...prev, [orderId]: stars }));
     setRatedMsg((prev) => ({ ...prev, [orderId]: `Thank you! You rated ${stars} stars.` }));
+    toast.success(`Rated ${stars} stars successfully! 🌟`);
   };
 
   return (
@@ -193,7 +195,7 @@ export default function OrdersPage() {
 
                       <div className="text-left sm:text-right bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
                         <span className="text-[10px] text-slate-400 font-bold uppercase block">Total</span>
-                        <span className="text-lg font-black text-slate-900">${order.totalAmount.toFixed(2)}</span>
+                        <span className="text-lg font-black text-slate-900">₹{order.totalAmount.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
