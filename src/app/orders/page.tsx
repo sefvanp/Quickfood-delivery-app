@@ -32,6 +32,8 @@ const getPartnerForOrder = (orderId: string) => {
   return deliveryPartners[index];
 };
 
+const DELIVERY_DURATION_SECONDS = 1800; // 30 minutes total delivery time
+
 export default function OrdersPage() {
   const { user, isSignedIn } = useUser();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -50,11 +52,19 @@ export default function OrdersPage() {
         });
         setOrders(data);
 
+        // Calculate real time elapsed since createdAt
         const initialTimes: { [key: string]: number } = {};
-        data.forEach((order: Order, index: number) => {
-          const timeOffsets = [400, 1100, 1800, 2500];
-          initialTimes[order._id] = timeOffsets[index % timeOffsets.length];
+        const now = new Date().getTime();
+
+        data.forEach((order: Order) => {
+          const orderTime = new Date(order.createdAt).getTime();
+          const elapsedSeconds = Math.floor((now - orderTime) / 1000);
+          const remaining = DELIVERY_DURATION_SECONDS - elapsedSeconds;
+          
+          // If more than 30 mins passed, set to 0 (Delivered)
+          initialTimes[order._id] = remaining > 0 ? remaining : 0;
         });
+
         setTimeLefts(initialTimes);
       } catch (err) {
         console.error("Error fetching orders:", err);
@@ -86,6 +96,7 @@ export default function OrdersPage() {
   }, []);
 
   const formatTime = (seconds: number) => {
+    if (seconds <= 0) return "Completed";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
@@ -94,7 +105,7 @@ export default function OrdersPage() {
   const getOrderStatus = (secondsLeft: number) => {
     if (secondsLeft <= 0) return "Delivered";
     if (secondsLeft <= 600) return "Out for Delivery";
-    if (secondsLeft <= 1400) return "Packing";
+    if (secondsLeft <= 1200) return "Packing";
     return "Preparing";
   };
 
@@ -145,36 +156,37 @@ export default function OrdersPage() {
         ) : (
           <div className="space-y-6">
             {orders.map((order) => {
-              const secondsLeft = timeLefts[order._id] ?? 1200;
+              const secondsLeft = timeLefts[order._id] ?? 0;
               const currentStatus = getOrderStatus(secondsLeft);
               const partner = getPartnerForOrder(order._id);
               const currentRating = ratings[order._id] || 0;
+              const isDelivered = secondsLeft <= 0;
               
               return (
                 <div
                   key={order._id}
                   className="bg-white p-6 rounded-2xl shadow-xl shadow-slate-100 border border-orange-100/60 space-y-6 relative overflow-hidden transition-all hover:shadow-2xl"
                 >
-                  <div className="absolute top-0 left-0 w-2 h-full bg-orange-500" />
+                  <div className={`absolute top-0 left-0 w-2 h-full ${isDelivered ? "bg-green-500" : "bg-orange-500"}`} />
 
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-slate-900 text-lg">Order #{order._id.slice(-6)}</span>
-                        <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" /> Live Tracking
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${isDelivered ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                          <Sparkles className="w-3 h-3" /> {isDelivered ? "Delivered" : "Live Tracking"}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                        <Clock className="w-3.5 h-3.5 text-orange-500" /> Placed at: {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <Clock className="w-3.5 h-3.5 text-orange-500" /> Placed at: {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(order.createdAt).toLocaleDateString()})
                       </p>
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2 rounded-xl shadow-md flex items-center gap-3">
-                        <Timer className="w-5 h-5 animate-pulse" />
+                      <div className={`text-white px-4 py-2 rounded-xl shadow-md flex items-center gap-3 ${isDelivered ? "bg-green-600" : "bg-gradient-to-r from-orange-500 to-amber-500"}`}>
+                        <Timer className={`w-5 h-5 ${!isDelivered ? "animate-pulse" : ""}`} />
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider opacity-90">Live Arrival In</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider opacity-90">{isDelivered ? "Status" : "Live Arrival In"}</p>
                           <p className="text-base font-black tracking-tight">{formatTime(secondsLeft)}</p>
                         </div>
                       </div>
@@ -190,7 +202,7 @@ export default function OrdersPage() {
                   <div className="py-2">
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Order Status Tracking</h4>
-                      <span className="text-xs font-extrabold px-3 py-1 bg-orange-50 text-orange-600 border border-orange-200/60 rounded-full animate-pulse">
+                      <span className={`text-xs font-extrabold px-3 py-1 rounded-full border ${isDelivered ? "bg-green-50 text-green-600 border-green-200" : "bg-orange-50 text-orange-600 border-orange-200/60 animate-pulse"}`}>
                         Status: {currentStatus}
                       </span>
                     </div>
@@ -246,14 +258,16 @@ export default function OrdersPage() {
                           <h5 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
                             {partner.name} <span className="text-[10px] font-normal text-slate-500 bg-slate-200 px-2 py-0.5 rounded">Delivery Partner</span>
                           </h5>
-                          <p className="text-xs text-slate-500">Your food is secure & on the way</p>
+                          <p className="text-xs text-slate-500">{isDelivered ? "Order successfully delivered" : "Your food is secure & on the way"}</p>
                         </div>
                       </div>
-                      <a href={`tel:${partner.phone}`}>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1.5 shadow-sm">
-                          <Phone className="w-3.5 h-3.5" /> Call Driver
-                        </Button>
-                      </a>
+                      {!isDelivered && (
+                        <a href={`tel:${partner.phone}`}>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1.5 shadow-sm">
+                            <Phone className="w-3.5 h-3.5" /> Call Driver
+                          </Button>
+                        </a>
+                      )}
                     </div>
 
                     {/* Delivery Partner Rating Option */}
