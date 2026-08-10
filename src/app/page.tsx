@@ -292,36 +292,84 @@ export default function Home() {
 
                 {cart.length > 0 && (
                   <div className="border-t pt-4 space-y-3">
+                    {/* Available Promo Codes Section (Paytm Style) */}
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
+                      <p className="text-xs font-bold text-slate-700">Available Offers:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div 
+                          onClick={() => setDiscountCodeInput("QUICK50")}
+                          className="bg-white p-2 rounded-lg border border-orange-200 cursor-pointer hover:border-orange-500 transition-all flex flex-col justify-between shadow-xs"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-mono font-bold text-xs text-orange-600">QUICK50</span>
+                            <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-semibold">50% OFF</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 mt-1">Tap to apply code</span>
+                        </div>
+
+                        <div 
+                          onClick={() => setDiscountCodeInput("WELCOME10")}
+                          className="bg-white p-2 rounded-lg border border-orange-200 cursor-pointer hover:border-orange-500 transition-all flex flex-col justify-between shadow-xs"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-mono font-bold text-xs text-orange-600">WELCOME10</span>
+                            <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-semibold">10% OFF</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 mt-1">Tap to apply code</span>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Promo Code Input Section */}
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Promo code (e.g. QUICK50)"
+                        placeholder="Enter promo code"
                         value={discountCodeInput}
                         onChange={(e) => setDiscountCodeInput(e.target.value)}
-                        className="text-xs h-9"
+                        className="text-xs h-9 uppercase font-mono"
                       />
-                      <Button size="sm" variant="outline" onClick={handleApplyPromoCode} className="h-9">
-                        Apply
-                      </Button>
+                      {appliedDiscountCode ? (
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          className="h-9 px-3 text-xs"
+                          onClick={() => {
+                            setAppliedDiscountCode("");
+                            setDiscountPercentage(0);
+                            setDiscountCodeInput("");
+                            toast.success("Promo code removed");
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          className="h-9 bg-slate-900 hover:bg-slate-800 text-white text-xs" 
+                          onClick={handleApplyPromoCode}
+                        >
+                          Apply
+                        </Button>
+                      )}
                     </div>
 
                     {discountPercentage > 0 && (
-                      <div className="flex justify-between text-xs text-green-600 font-medium">
-                        <span>Discount Applied ({discountPercentage}%):</span>
+                      <div className="flex justify-between text-xs text-green-600 font-medium bg-green-50 p-2 rounded-lg border border-green-200">
+                        <span>Applied ({appliedDiscountCode}): {discountPercentage}% OFF</span>
                         <span>-₹{discountAmount.toFixed(2)}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between text-lg font-bold">
+                    <div className="flex justify-between text-lg font-bold pt-1">
                       <span>Total Amount:</span>
                       <span>₹{totalPrice.toFixed(2)}</span>
                     </div>
                     <Button
-                      className="w-full bg-orange-500 hover:bg-orange-600"
+                      className="w-full bg-orange-500 hover:bg-orange-600 py-6 text-base font-bold shadow-md"
                       onClick={handleCheckout}
                       disabled={loading}
                     >
-                      {loading ? "Processing..." : "Pay with Stripe"}
+                      {loading ? "Processing..." : `Pay ₹{totalPrice.toFixed(2)} with Stripe`}
                     </Button>
                   </div>
                 )}
