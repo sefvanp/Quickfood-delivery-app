@@ -369,7 +369,7 @@ export default function Home() {
                       onClick={handleCheckout}
                       disabled={loading}
                     >
-                      {loading ? "Processing..." : `Pay ₹{totalPrice.toFixed(2)} with Stripe`}
+                      {loading ? "Processing..." : `Place Order (₹${totalPrice.toFixed(2)})`}
                     </Button>
                   </div>
                 )}
