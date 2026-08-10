@@ -13,7 +13,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Sanity-യിലേക്ക് ഓർഡർ സേവ് ചെയ്യുന്നു
     const orderDoc = {
       _type: "order",
       customerName: body.customerName || "Guest",

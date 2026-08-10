@@ -77,6 +77,11 @@ export default function Home() {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Promo code states
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     if (query.get("success") === "true") {
@@ -95,7 +100,6 @@ export default function Home() {
       try {
         const query = `*[_type == "food"]{ _id, name, price, category, description, image }`;
         const data = await client.fetch(query, {}, { useCdn: false });
-        console.log("Fetched Foods from Sanity:", data);
         setFoodItems(data);
       } catch (err) {
         console.error("Sanity Fetch Error:", err);
@@ -104,6 +108,21 @@ export default function Home() {
 
     fetchFoods();
   }, []);
+
+  const handleApplyPromoCode = () => {
+    const code = discountCodeInput.trim().toUpperCase();
+    if (code === "QUICK50") {
+      setDiscountPercentage(50);
+      setAppliedDiscountCode(code);
+      toast.success("Promo code applied: 50% OFF");
+    } else if (code === "WELCOME10" || code === "QUICKFREE") {
+      setDiscountPercentage(10);
+      setAppliedDiscountCode(code);
+      toast.success("Promo code applied: 10% OFF");
+    } else {
+      toast.error("Invalid promo code");
+    }
+  };
 
   const handleCheckout = async () => {
     if (!isSignedIn) {
@@ -122,6 +141,7 @@ export default function Home() {
           items: cart,
           userEmail: user?.primaryEmailAddress?.emailAddress,
           userName: user?.fullName || "Customer",
+          discountCode: appliedDiscountCode,
         }),
       });
 
@@ -153,10 +173,12 @@ export default function Home() {
   });
 
   const totalItemsCount = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
-  const totalPrice = cart.reduce(
+  const subtotalPrice = cart.reduce(
     (sum: number, item: any) => sum + item.price * item.quantity,
     0
   );
+  const discountAmount = (subtotalPrice * discountPercentage) / 100;
+  const totalPrice = subtotalPrice - discountAmount;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
@@ -208,7 +230,7 @@ export default function Home() {
                   <SheetHeader>
                     <SheetTitle className="text-xl font-bold">Your Order Cart</SheetTitle>
                   </SheetHeader>
-                  <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                  <div className="mt-6 space-y-4 max-h-[50vh] overflow-y-auto">
                     {cart.length === 0 ? (
                       <p className="text-slate-500 text-center py-8">Your cart is empty.</p>
                     ) : (
@@ -269,7 +291,27 @@ export default function Home() {
                 </div>
 
                 {cart.length > 0 && (
-                  <div className="border-t pt-4 space-y-4">
+                  <div className="border-t pt-4 space-y-3">
+                    {/* Promo Code Input Section */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Promo code (e.g. QUICK50)"
+                        value={discountCodeInput}
+                        onChange={(e) => setDiscountCodeInput(e.target.value)}
+                        className="text-xs h-9"
+                      />
+                      <Button size="sm" variant="outline" onClick={handleApplyPromoCode} className="h-9">
+                        Apply
+                      </Button>
+                    </div>
+
+                    {discountPercentage > 0 && (
+                      <div className="flex justify-between text-xs text-green-600 font-medium">
+                        <span>Discount Applied ({discountPercentage}%):</span>
+                        <span>-₹{discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total Amount:</span>
                       <span>₹{totalPrice.toFixed(2)}</span>
@@ -326,14 +368,14 @@ export default function Home() {
                 <Percent className="w-8 h-8 text-yellow-200" />
                 <div>
                   <h4 className="font-bold text-lg">50% OFF</h4>
-                  <p className="text-xs text-orange-100">On your first burger order!</p>
+                  <p className="text-xs text-orange-100">Use code: QUICK50</p>
                 </div>
               </div>
               <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">
                 <ShoppingBag className="w-8 h-8 text-yellow-200" />
                 <div>
-                  <h4 className="font-bold text-lg">Buy 1 Get 1</h4>
-                  <p className="text-xs text-orange-100">Applicable on all Large Pizzas</p>
+                  <h4 className="font-bold text-lg">10% OFF</h4>
+                  <p className="text-xs text-orange-100">Use code: WELCOME10</p>
                 </div>
               </div>
               <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex items-center gap-3">

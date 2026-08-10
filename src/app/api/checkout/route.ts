@@ -16,22 +16,36 @@ const client = createClient({
 
 export async function POST(req: Request) {
   try {
-    const { items, userEmail, userName } = await req.json();
+    const { items, userEmail, userName, discountCode } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: "No items in the cart" }, { status: 400 });
     }
 
-    const lineItems = items.map((item: any) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.name,
+    let discountPercentage = 0;
+    if (discountCode === "QUICK50") {
+      discountPercentage = 50; // 50% discount
+    } else if (discountCode === "WELCOME10" || discountCode === "QUICKFREE") {
+      discountPercentage = 10; // 10% discount
+    }
+
+    const lineItems = items.map((item: any) => {
+      let finalPrice = item.price;
+      if (discountPercentage > 0) {
+        finalPrice = item.price * (1 - discountPercentage / 100);
+      }
+
+      return {
+        price_data: {
+          currency: "inr",
+          product_data: {
+            name: item.name,
+          },
+          unit_amount: Math.round(finalPrice * 100), // Stripe takes amount in paisa
         },
-        unit_amount: Math.round(item.price * 100),
-      },
-      quantity: item.quantity,
-    }));
+        quantity: item.quantity,
+      };
+    });
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
@@ -39,12 +53,13 @@ export async function POST(req: Request) {
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: `${origin}/order-success`,
-      cancel_url: `${origin}/`,
+      success_url: `${origin}/?success=true`,
+      cancel_url: `${origin}/?canceled=true`,
     });
 
-    // Sanity-യിലേക്ക് ഓർഡർ സേവ് ചെയ്യുന്നു
-    const totalAmount = items.reduce((sum: number, i: any) => sum + i.price * i.quantity, 0);
+    const subtotal = items.reduce((sum: number, i: any) => sum + i.price * i.quantity, 0);
+    const discountAmount = (subtotal * discountPercentage) / 100;
+    const totalAmount = subtotal - discountAmount;
     
     await client.create({
       _type: "order",
